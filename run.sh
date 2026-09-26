@@ -1,34 +1,35 @@
 #!/bin/bash
 # wildtiles scrontab entry point (Setonix).
-# scrontab example:
+# scrontab:
 #   #SCRON --time=02:00:00 --mem=16G --cpus-per-task=4
 #   23 3 * * * $HOME/wildtiles-ops/run.sh
+#
+# Module loads come BEFORE strict mode: Lmod can trip over set -u.
+module load rclone/1.68.1
+module load singularity/4.1.0-slurm
 set -euo pipefail
 
 OPS=$HOME/wildtiles-ops
 REPO_URL=https://github.com/mdsumner/wildtiles.git
 WORK=${MYSCRATCH:-$HOME}/wildtiles-run
-IMAGE=$(cat "$WORK/repo/container/IMAGE")
-DIGEST=$(echo "$IMAGE" | sed 's/.*sha256://' | cut -c1-12)
-SIF=$MYSOFTWARE/sif_lib/gdal-r-python-extras_${DIGEST}.sif
-[ -f "$SIF" ] || singularity pull "$SIF" "docker://$IMAGE"
-RSCRIPT="singularity exec --env LD_LIBRARY_PATH= $SIF Rscript"
 BUCKET=${WILDTILES_BUCKET:-tnbc}
-ENDPOINT=https://projects.pawsey.org.au
+REMOTE=pawsey1197            # rclone remote (site config)
+SIF_LIB=${MYSOFTWARE:-$HOME}/sif_lib
 
-LOG_DIR=$OPS/logs; mkdir -p "$LOG_DIR" "$WORK"
+LOG_DIR=$OPS/logs; mkdir -p "$LOG_DIR" "$WORK" "$SIF_LIB"
 
+# --- single-flight lock -------------------------------------------------
 exec 9>"$OPS/.run.lock"
 flock -n 9 || { echo "$(date -u +%FT%TZ) busy, skip" >> "$LOG_DIR/runs.log"; exit 0; }
 
-source "$OPS/env.sh"    # chmod 600; exports PAWSEY_AWS_*
-: "${PAWSEY_AWS_ACCESS_KEY_ID:?}" "${PAWSEY_AWS_SECRET_ACCESS_KEY:?}"
-export AWS_ACCESS_KEY_ID=$PAWSEY_AWS_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY=$PAWSEY_AWS_SECRET_ACCESS_KEY
+# --- secrets: one file, fail loud, exported before anything loads GDAL --
+source "$OPS/env.sh"
+: "${PAWSEY_AWS_ACCESS_KEY_ID:?not set}" "${PAWSEY_AWS_SECRET_ACCESS_KEY:?not set}"
 export SINGULARITYENV_PAWSEY_AWS_ACCESS_KEY_ID=$PAWSEY_AWS_ACCESS_KEY_ID
 export SINGULARITYENV_PAWSEY_AWS_SECRET_ACCESS_KEY=$PAWSEY_AWS_SECRET_ACCESS_KEY
 export SINGULARITYENV_WILDTILES_BUCKET=$BUCKET
 
+# --- code: clone or fast-forward to origin/main -------------------------
 cd "$WORK"
 if [ -d repo/.git ]; then
   git -C repo fetch -q origin main && git -C repo reset -q --hard origin/main
@@ -37,18 +38,23 @@ else
 fi
 SHA=$(git -C repo rev-parse --short HEAD)
 
-## starc-store: bucket is canonical, scratch is cache (append-only,
-## write-once shards make sync trivially safe in both directions)
-aws s3 sync "s3://$BUCKET/starc-store" "$WORK/starc-store" \
-  --endpoint-url "$ENDPOINT" --quiet
+# --- image: digest-pinned by the repo, lazily pulled, content-addressed -
+IMAGE=$(cat repo/container/IMAGE)
+DIGEST=$(echo "$IMAGE" | sed 's/.*sha256://' | cut -c1-12)
+SIF=$SIF_LIB/gdal-r-python-extras_${DIGEST}.sif
+[ -f "$SIF" ] || singularity pull "$SIF" "docker://$IMAGE"
+RSCRIPT="singularity exec --env LD_LIBRARY_PATH= $SIF Rscript"
 
+# --- starc-store: bucket canonical, scratch cache (copy never deletes) --
+rclone copy "$REMOTE:$BUCKET/starc-store" "$WORK/starc-store" --transfers 16 -q
+
+# --- run -----------------------------------------------------------------
 RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)
 RUNLOG=$LOG_DIR/run_${RUN_ID}_${SHA}.log
 echo "$(date -u +%FT%TZ) start $RUN_ID commit $SHA bucket $BUCKET" >> "$LOG_DIR/runs.log"
 
 if $RSCRIPT repo/run.R "$RUN_ID" "$SHA" "$WORK" >> "$RUNLOG" 2>&1; then
-  aws s3 sync "$WORK/starc-store" "s3://$BUCKET/starc-store" \
-    --endpoint-url "$ENDPOINT" --quiet
+  rclone copy "$WORK/starc-store" "$REMOTE:$BUCKET/starc-store" --transfers 16 -q
   echo "$(date -u +%FT%TZ) OK    $RUN_ID" >> "$LOG_DIR/runs.log"
 else
   echo "$(date -u +%FT%TZ) FAIL  $RUN_ID see $(basename "$RUNLOG")" >> "$LOG_DIR/runs.log"
