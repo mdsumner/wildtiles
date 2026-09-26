@@ -8,8 +8,11 @@ set -euo pipefail
 OPS=$HOME/wildtiles-ops
 REPO_URL=https://github.com/mdsumner/wildtiles.git
 WORK=${MYSCRATCH:-$HOME}/wildtiles-run
-SIF=$OPS/wildtiles.sif
-RSCRIPT="singularity exec $SIF Rscript"     # or plain Rscript
+IMAGE=$(cat "$WORK/repo/container/IMAGE")
+DIGEST=$(echo "$IMAGE" | sed 's/.*sha256://' | cut -c1-12)
+SIF=$MYSOFTWARE/sif_lib/gdal-r-python-extras_${DIGEST}.sif
+[ -f "$SIF" ] || singularity pull "$SIF" "docker://$IMAGE"
+RSCRIPT="singularity exec --env LD_LIBRARY_PATH= $SIF Rscript"
 BUCKET=${WILDTILES_BUCKET:-tnbc}
 ENDPOINT=https://projects.pawsey.org.au
 
