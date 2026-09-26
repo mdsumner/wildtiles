@@ -31,11 +31,7 @@ export SINGULARITYENV_WILDTILES_BUCKET=$BUCKET
 
 # --- code: clone or fast-forward to origin/main -------------------------
 cd "$WORK"
-if [ -d repo/.git ]; then
-  git -C repo fetch -q origin main && git -C repo reset -q --hard origin/main
-else
-  git clone -q --depth 1 "$REPO_URL" repo
-fi
+[ -d repo/.git ] || { echo "no checkout at $WORK/repo -- run via the shim"; exit 1; }
 SHA=$(git -C repo rev-parse --short HEAD)
 
 # --- image: digest-pinned by the repo, lazily pulled, content-addressed -
