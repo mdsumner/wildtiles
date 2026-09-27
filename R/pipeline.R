@@ -49,6 +49,9 @@ set_gdal_envs <- function() {
   if (!nzchar(key) || !nzchar(sec)) {
     stop("PAWSEY_AWS_* credentials not set in this session")
   }
+  if (nchar(key) < 16 || nchar(sec) < 16) {
+    stop("PAWSEY_AWS_* look like placeholders, not credentials")
+  }
   opts <- c(
     AWS_ACCESS_KEY_ID = key,
     AWS_SECRET_ACCESS_KEY = sec,
@@ -68,7 +71,8 @@ put_file_at <- function(local, remote) {
   bytes <- con$ingest(-1); con$close()
   con1 <- new(gdalraster::VSIFile, remote, "w")
   con1$write(bytes); con1$close()
-  invisible(gdalraster::vsi_stat(remote, "exists"))
+  if (!gdalraster::vsi_stat(remote, "exists")) stop("put failed: ", remote)
+  invisible(TRUE)
 }
 
 band_path <- function(prefix, tile_id, band, day) {

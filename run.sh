@@ -28,6 +28,7 @@ source "$OPS/env.sh"
 export SINGULARITYENV_PAWSEY_AWS_ACCESS_KEY_ID=$PAWSEY_AWS_ACCESS_KEY_ID
 export SINGULARITYENV_PAWSEY_AWS_SECRET_ACCESS_KEY=$PAWSEY_AWS_SECRET_ACCESS_KEY
 export SINGULARITYENV_WILDTILES_BUCKET=$BUCKET
+export SINGULARITYENV_WILDTILES_DEADLINE=${SLURM_JOB_END_TIME:-$(date -d '+110 minutes' +%s)}
 
 # --- code: clone or fast-forward to origin/main -------------------------
 cd "$WORK"
