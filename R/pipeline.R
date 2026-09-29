@@ -7,7 +7,9 @@ OX <- 140000; OY <- 20000; NPIX <- 600L
 
 BAND_KEYS <- c("red", "green", "blue", "nir", "nir08", "nir09", "coastal",
                "rededge1", "rededge2", "rededge3", "swir16", "swir22",
-               "aot", "wvp", "scl", "cloud", "snow")
+               "aot", "wvp", "scl", "cloud", "snow", "visual")
+
+NOSTAT_KEYS <- c("visual")
 
 ## the survey design in force (registry migration will retire this)
 SPECS <- list(
@@ -157,8 +159,10 @@ build_day <- function(day_plan, day, sp, tiles, block, prefix, workdir) {
                    "-of", "COG", "-co", "COMPRESS=DEFLATE"),
         quiet = TRUE)
       put_file_at(tt, band_path(prefix, tiles$tile_id[t], k, day))
-      srows[[length(srows) + 1]] <- summarise_band(tt, tiles$tile_id[t],
+      if (!k %in% NOSTAT_KEYS) {
+        srows[[length(srows) + 1]] <- summarise_band(tt, tiles$tile_id[t],
                                                    k, day)
+      }
       unlink(tt)
     }
     unlink(btif)
