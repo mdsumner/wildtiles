@@ -177,9 +177,9 @@ WILDTILES_WORKERS (default 4, deliberately modest), every worker
 sources pipeline.R and calls set_gdal_envs() itself, ALL monotone
 state stays in the main process, the deadline stops dispatch and
 in-flight days drain. Serial path preserved verbatim for workers=1 or
-mirai absent from the image (logged, not fatal). mirai + nanonext must
-be baked into gdal-r-python-extras. The explicit backfill.sbatch tier
-remains backlog. Original analysis kept for the record:
+mirai absent from the image (logged, not fatal; mirai and nanonext
+are already on gdal-r-python-extras). The explicit backfill.sbatch
+tier remains backlog. Original analysis kept for the record:
 
 Facts: the workload is network-bound (vsicurl reads dominate; CPU per
 band is seconds); days are contention-free by construction (no two
