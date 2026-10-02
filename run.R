@@ -20,7 +20,7 @@ repo <- dirname(normalizePath(sub("--file=", "",
                                   grep("--file=", commandArgs(), value = TRUE))))
 source(file.path(repo, "R", "pipeline.R"))
 
-bucket     <- Sys.getenv("WILDTILES_BUCKET", "tnbc")
+bucket     <- Sys.getenv("WILDTILES_BUCKET", "wildtiles")
 bucket_url <- sprintf("https://projects.pawsey.org.au/%s", bucket)
 prefix     <- sprintf("/vsis3/%s", bucket)
 store      <- file.path(workroot, "starc-store")   # synced by run.sh

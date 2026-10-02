@@ -3,7 +3,7 @@
 # Grid constants mirror aatgrid (GRID_ORIGIN, PIXELS_PER_TILE); replace
 # with aatgrid:: imports once the container pins aatgrid.
 
-OX <- 140000; OY <- 20000; NPIX <- 600L
+OX <- 140000; OY <- 20000; NPIX <- 720L
 
 BAND_KEYS <- c("red", "green", "blue", "nir", "nir08", "nir09", "coastal",
                "rededge1", "rededge2", "rededge3", "swir16", "swir22",
@@ -11,13 +11,20 @@ BAND_KEYS <- c("red", "green", "blue", "nir", "nir08", "nir09", "coastal",
 
 NOSTAT_KEYS <- c("visual")
 
-## the survey design in force (registry migration will retire this)
+## the survey design in force (registry migration will retire this).
+## Indices are on the 720-pixel lattice: tile_size(10) = 7200 m,
+## tile_size(60) = 43200 m. Derived in code from region coordinates
+## (pyproj densified transforms), never retyped:
+##   auster    colony E540796 N2523234 (41S) -> L2 (55, 347), 3x3 block
+##   heard     coast bbox densified     (43S) -> L1 cols 4:6 rows 94:95
+##   macquarie station E496011 N3960989 (57S) -> L2 (49, 547), 3x3 block
 SPECS <- list(
   list(region_id = "auster",         zone = 41L, res = 10,
-       cols = 65:67, rows = 416:418),
+       cols = 54:56, rows = 346:348),
   list(region_id = "heard_mcdonald", zone = 43L, res = 60,
-       cols = 5:7,   rows = 113:114)
-  ## macquarie_island_south: zone 57L, res 10, cols 57:60, rows 651:657
+       cols = 4:6,   rows = 94:95),
+  list(region_id = "macquarie_island_south", zone = 57L, res = 10,
+       cols = 48:50, rows = 546:548)
 )
 
 tile_extent <- function(col, row, res) {

@@ -1,3 +1,4 @@
 region_id,n,zones,lonmin,lonmax,latmin,latmax,span_km,members
 auster,1,41S,63.9515,63.9515,-67.40432,-67.40432,0,Auster
 heard_mcdonald,8,43S,72.57732,73.7189,-53.1141,-53.0243,61,"Heard_Island_60m,Heard_Island_Atlas_Cove,Heard_Island_Atlas_Cove_2,Heard_Island_Big_Ben,Heard_Island_Compton_Lagoon,Heard_Island_Spit_Bay,Heard_Island_Spit_Bay_2,McDonald_Island"
+macquarie_island_south,2,57S,158.8252,158.9384,-54.7556,-54.4987,29,"Macquarie_Island_South,Macquarie_Island_Station"

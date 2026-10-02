@@ -12,7 +12,7 @@ set -euo pipefail
 OPS=$HOME/wildtiles-ops
 REPO_URL=https://github.com/mdsumner/wildtiles.git
 WORK=${MYSCRATCH:-$HOME}/wildtiles-run
-BUCKET=${WILDTILES_BUCKET:-tnbc}
+BUCKET=${WILDTILES_BUCKET:-wildtiles}
 REMOTE=pawsey1197            # rclone remote (site config)
 SIF_LIB=${MYSOFTWARE:-$HOME}/sif_lib
 
