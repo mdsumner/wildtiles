@@ -18,13 +18,16 @@ NOSTAT_KEYS <- c("visual")
 ##   auster    colony E540796 N2523234 (41S) -> L2 (55, 347), 3x3 block
 ##   heard     coast bbox densified     (43S) -> L1 cols 4:6 rows 94:95
 ##   macquarie station E496011 N3960989 (57S) -> L2 (49, 547), 3x3 block
+##   casey     station E478757 N2648521 (49S) -> L2 (47, 365), 3x3 block
 SPECS <- list(
   list(region_id = "auster",         zone = 41L, res = 10,
        cols = 54:56, rows = 346:348),
   list(region_id = "heard_mcdonald", zone = 43L, res = 60,
        cols = 4:6,   rows = 94:95),
   list(region_id = "macquarie_island_south", zone = 57L, res = 10,
-       cols = 48:50, rows = 546:548)
+       cols = 48:50, rows = 546:548),
+  list(region_id = "casey_station", zone = 49L, res = 10,
+       cols = 46:48, rows = 364:366)
 )
 
 tile_extent <- function(col, row, res) {
