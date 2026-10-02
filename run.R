@@ -27,7 +27,7 @@ store      <- file.path(workroot, "starc-store")   # synced by run.sh
 workdir    <- file.path(workroot, "stage")
 dir.create(workdir, showWarnings = FALSE, recursive = TRUE)
 
-plan_t0        <- as.Date("2024-01-01")
+plan_t0        <- as.Date("2023-01-01")   # stepping back fills history
 recheck_days   <- 14
 checkpoint_every <- 25   # days rendered between mid-region checkpoints
 provider   <- "https://earth-search.aws.element84.com/v1/search"
@@ -128,7 +128,11 @@ for (sp in SPECS) {
   rid   <- sp$region_id
   tiles <- spec_tiles(sp)
   block <- spec_block(sp)
-  from  <- max(plan_t0, complete_through(rid) - recheck_days + 1)
+  ## plan the WHOLE window every run: the inventory certifies rendered
+  ## days at zero network cost, so stepping plan_t0 back simply opens
+  ## older history as pending backfill (the old complete_through clamp
+  ## would have pinned us to the frontier forever)
+  from  <- plan_t0
 
   q <- starc::harvest(regions[regions$region_id == rid, ],
                       provider, collection, format(from), t1,
