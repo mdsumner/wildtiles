@@ -35,6 +35,27 @@ collection <- "sentinel-2-c1-l2a"
 
 set_gdal_envs()
 
+## --- modest parallelization: day-level workers --------------------------------
+## A day is the unit of work (one block warp per band, then carving).
+## Workers only warp, carve, and PUT cube files; ALL state (run record,
+## inventory, checkpoints) stays in this main process. Each worker is a
+## separate process, and GDAL config is process-local (3.13 snapshots at
+## init), so every worker calls set_gdal_envs() for itself. Default 4 is
+## deliberately modest: workers x 1 block warp = concurrent upstream
+## streams against Element84.
+
+workers  <- max(1L, as.integer(Sys.getenv("WILDTILES_WORKERS", "4")))
+use_pool <- workers > 1L && requireNamespace("mirai", quietly = TRUE)
+if (workers > 1L && !use_pool)
+  message("mirai not available in this image: running serial")
+if (use_pool) {
+  mirai::daemons(workers)
+  mirai::everywhere({
+    source(file.path(repo, "R", "pipeline.R"))
+    set_gdal_envs()
+  }, repo = repo)
+}
+
 ## --- deadline: exit gracefully before SLURM kills us ------------------------
 
 deadline <- suppressWarnings(as.numeric(Sys.getenv("WILDTILES_DEADLINE", "")))
@@ -138,22 +159,61 @@ for (sp in SPECS) {
                   sum(res$status == "pending")))
 
   done_since_cp <- 0L
-  for (day in as.list(res$day[res$status == "pending"])) {
-    if (time_up()) { timeboxed <- TRUE; break }
-    dp <- filter(plan, solarday == day)
-    stx <- build_day(dp, day, sp, tiles, block, prefix, workdir)
-    res$status[res$day == day] <- stx
+  record_day <- function(day, stx) {
+    res$status[res$day == day] <<- stx
     message(sprintf("[%s] %s %s", rid, day, stx))
     if (stx %in% c("ok", "exists")) {
       ## "exists" rows too: the index self-heals for pre-index days
-      new_rows[[length(new_rows) + 1]] <- expand.grid(
+      new_rows[[length(new_rows) + 1]] <<- expand.grid(
         tile_id = tiles$tile_id, band = BAND_KEYS,
         stringsAsFactors = FALSE) |>
         mutate(solarday = day, run_id = run_id)
     }
-    done_since_cp <- done_since_cp + 1L
+    done_since_cp <<- done_since_cp + 1L
     if (done_since_cp >= checkpoint_every) {
-      flush_inventory(); write_state("in-progress"); done_since_cp <- 0L
+      flush_inventory(); write_state("in-progress"); done_since_cp <<- 0L
+    }
+  }
+
+  pending <- res$day[res$status == "pending"]
+  if (!use_pool) {
+    for (day in as.list(pending)) {
+      if (time_up()) { timeboxed <- TRUE; break }
+      dp <- filter(plan, solarday == day)
+      record_day(day, build_day(dp, day, sp, tiles, block, prefix, workdir))
+    }
+  } else {
+    ## keep up to `workers` days in flight; the deadline stops DISPATCH
+    ## and in-flight days drain to completion (minutes, inside the
+    ## deadline margin), so no work is half-recorded
+    inflight <- list()
+    i <- 1L
+    while (length(inflight) > 0 ||
+           (i <= length(pending) && !timeboxed)) {
+      while (length(inflight) < workers && i <= length(pending) &&
+             !timeboxed) {
+        if (time_up()) { timeboxed <- TRUE; break }
+        day <- pending[i]; i <- i + 1L
+        dp <- filter(plan, solarday == day)
+        inflight[[format(day)]] <- mirai::mirai(
+          build_day(dp, day, sp, tiles, block, prefix, workdir),
+          dp = dp, day = day, sp = sp, tiles = tiles, block = block,
+          prefix = prefix, workdir = workdir)
+      }
+      if (length(inflight) == 0) next
+      fin <- names(inflight)[!vapply(inflight, mirai::unresolved,
+                                     logical(1))]
+      if (length(fin) == 0) { Sys.sleep(0.5); next }
+      for (nm in fin) {
+        out <- inflight[[nm]]$data
+        if (mirai::is_mirai_error(out) || !is.character(out)) {
+          message(sprintf("[%s] %s worker error: %s", rid, nm,
+                          paste(format(out), collapse = " ")))
+          out <- "error"
+        }
+        record_day(as.Date(nm), out)
+        inflight[[nm]] <- NULL
+      }
     }
   }
 
@@ -190,6 +250,7 @@ for (f in list.files(file.path(workdir, "summaries"), full.names = TRUE)) {
 
 ## --- final state ---------------------------------------------------------------
 
+if (use_pool) mirai::daemons(0)
 flush_inventory()
 write_state(if (timeboxed) "timeboxed" else "completed")
 message("run ", run_id, " ", if (timeboxed) "timeboxed" else "complete")

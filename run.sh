@@ -1,7 +1,7 @@
 #!/bin/bash
 # wildtiles scrontab entry point (Setonix).
 # scrontab:
-#   #SCRON --time=02:00:00 --mem=16G --cpus-per-task=4
+#   #SCRON --time=02:00:00 --mem=24G --cpus-per-task=6
 #   23 3 * * * $HOME/wildtiles-ops/run.sh
 #
 # Module loads come BEFORE strict mode: Lmod can trip over set -u.
@@ -29,6 +29,7 @@ export SINGULARITYENV_PAWSEY_AWS_ACCESS_KEY_ID=$PAWSEY_AWS_ACCESS_KEY_ID
 export SINGULARITYENV_PAWSEY_AWS_SECRET_ACCESS_KEY=$PAWSEY_AWS_SECRET_ACCESS_KEY
 export SINGULARITYENV_WILDTILES_BUCKET=$BUCKET
 export SINGULARITYENV_WILDTILES_DEADLINE=${SLURM_JOB_END_TIME:-$(date -d '+110 minutes' +%s)}
+export SINGULARITYENV_WILDTILES_WORKERS=${WILDTILES_WORKERS:-4}
 
 # --- code: clone or fast-forward to origin/main -------------------------
 cd "$WORK"
