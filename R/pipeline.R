@@ -24,6 +24,8 @@ SPECS <- list(
        cols = 54:56, rows = 346:348),
   list(region_id = "heard_mcdonald", zone = 43L, res = 60,
        cols = 4:6,   rows = 94:95),
+    list(region_id = "heard_mcdonald", zone = 43L, res = 10,
+       cols = 4:6,   rows = 94:95),
   list(region_id = "macquarie_island_south", zone = 57L, res = 10,
        cols = 48:50, rows = 546:548),
   list(region_id = "casey_station", zone = 49L, res = 10,
