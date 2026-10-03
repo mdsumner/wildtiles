@@ -245,6 +245,20 @@ for (sp in SPECS) {
   if (timeboxed) { message("[", rid, "] deadline reached"); break }
 }
 
+## --- acquisitions index: the store, navigable at a well-known key -------------
+## starc::snapshot() consolidates the shard store (which the no-list
+## policy makes unenumerable from outside) into single-file tables.
+## Feature-tested so this merges ahead of the image that carries it.
+
+if ("snapshot" %in% getNamespaceExports("starc")) {
+  man <- starc::snapshot(store, file.path(workdir, "starc-snapshot"),
+                         tables = "acquisitions")
+  put_file_at(man$path[1], sprintf("%s/index/acquisitions.parquet", prefix))
+  message("acquisitions index: ", man$n_row[1], " rows published")
+} else {
+  message("starc on this image predates snapshot(): acquisitions index skipped")
+}
+
 ## --- summaries push -----------------------------------------------------------
 
 for (f in list.files(file.path(workdir, "summaries"), full.names = TRUE)) {
