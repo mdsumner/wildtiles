@@ -27,7 +27,7 @@ store      <- file.path(workroot, "starc-store")   # synced by run.sh
 workdir    <- file.path(workroot, "stage")
 dir.create(workdir, showWarnings = FALSE, recursive = TRUE)
 
-plan_t0        <- as.Date("2022-01-01")   # stepping back fills history
+plan_t0        <- as.Date("2015-01-01")   # stepping back fills history
 recheck_days   <- 14
 checkpoint_every <- 25   # days rendered between mid-region checkpoints
 provider   <- "https://earth-search.aws.element84.com/v1/search"
